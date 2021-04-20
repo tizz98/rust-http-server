@@ -1,4 +1,5 @@
 // Expose via use http::Method;
+pub use headers::Headers;
 pub use method::Method;
 pub use query_string::{QueryString, Value as QueryStringValue};
 pub use request::ParseError;
@@ -7,6 +8,7 @@ pub use response::Response;
 pub use status_code::StatusCode;
 
 // Expose via use http::method::Method;
+pub mod headers;
 pub mod method;
 pub mod query_string;
 pub mod request;
