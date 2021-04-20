@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter, Result as FmtResult};
 
 #[derive(Debug)]
 pub struct Headers<'buf> {
@@ -12,6 +13,14 @@ pub enum Value<'buf> {
 }
 
 impl<'buf> Headers<'buf> {
+    pub fn new() -> Self {
+        Self {
+            data: HashMap::new(),
+        }
+    }
+}
+
+impl<'buf> Headers<'buf> {
     pub fn get(&self, key: &str) -> Option<&Value> {
         let lowercase_key = key.to_lowercase();
 
@@ -22,6 +31,17 @@ impl<'buf> Headers<'buf> {
         }
 
         None
+    }
+
+    pub fn add(&mut self, key: &'buf str, val: &'buf str) {
+        // TODO: deduplicate code
+        self.data
+            .entry(key)
+            .and_modify(|existing| match existing {
+                Value::Single(prev) => *existing = Value::Multiple(vec![prev, val]),
+                Value::Multiple(vec) => vec.push(val),
+            })
+            .or_insert(Value::Single(val));
     }
 }
 
@@ -48,5 +68,22 @@ impl<'buf> From<&'buf str> for Headers<'buf> {
         }
 
         Headers { data }
+    }
+}
+
+impl<'buf> Display for Headers<'buf> {
+    fn fmt(&self, f: &mut Formatter) -> FmtResult {
+        for (&k, v) in self.data.iter() {
+            match v {
+                Value::Single(v) => write!(f, "{}: {}\r\n", k, v),
+                Value::Multiple(v) => {
+                    for &header_value in v.iter() {
+                        write!(f, "{}: {}\r\n", k, header_value)?;
+                    }
+                    Ok(())
+                }
+            }?;
+        }
+        Ok(())
     }
 }
