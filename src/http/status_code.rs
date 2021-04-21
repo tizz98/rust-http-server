@@ -10,7 +10,7 @@ pub enum StatusCode {
 impl StatusCode {
     pub fn reason_phrase(&self) -> &str {
         match self {
-            Self::Ok => "Ok",
+            Self::Ok => "OK",
             Self::BadRequest => "Bad Request",
             Self::NotFound => "Not Found",
         }
