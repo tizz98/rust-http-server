@@ -1,5 +1,6 @@
 use super::http::{Method, Request, Response, StatusCode};
 use super::server::Handler;
+use crate::http::Headers;
 use std::fs;
 
 pub struct WebsiteHandler {
@@ -33,10 +34,14 @@ impl Handler for WebsiteHandler {
         match request.method() {
             Method::GET => match request.path() {
                 "/" => {
-                    Response::new_with_default_headers(StatusCode::Ok, self.read_file("index.html"))
+                    let mut headers = Headers::new();
+                    headers.add("Content-Type", "text/html; charset=utf-8");
+                    Response::new(StatusCode::Ok, self.read_file("index.html"), headers)
                 }
                 "/hello" => {
-                    Response::new_with_default_headers(StatusCode::Ok, self.read_file("hello.html"))
+                    let mut headers = Headers::new();
+                    headers.add("Content-Type", "text/html; charset=utf-8");
+                    Response::new(StatusCode::Ok, self.read_file("hello.html"), headers)
                 }
                 path => match self.read_file(path) {
                     Some(contents) => {
@@ -45,7 +50,18 @@ impl Handler for WebsiteHandler {
                     None => Response::new_with_default_headers(StatusCode::NotFound, None),
                 },
             },
-            _ => Response::new_with_default_headers(StatusCode::NotFound, None),
+            _ => match request.path() {
+                "/echo" => {
+                    let mut headers = Headers::new();
+                    headers.add("Content-Type", "text/html; charset=utf-8");
+                    Response::new(
+                        StatusCode::Ok,
+                        Some(format!("<pre>{:?}</pre>", request)),
+                        headers,
+                    )
+                }
+                _ => Response::new_with_default_headers(StatusCode::NotFound, None),
+            },
         }
     }
 }

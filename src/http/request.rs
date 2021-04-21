@@ -12,6 +12,7 @@ pub struct Request<'buf> {
     query_string: Option<QueryString<'buf>>,
     method: Method,
     headers: Option<Headers<'buf>>,
+    body: Option<&'buf str>,
 }
 
 impl<'buf> Request<'buf> {
@@ -38,8 +39,8 @@ impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
     // GET /search?name=abc&sort=1 HTTP/1.1\r\n<HEADERS>\r\n\r\n<BODY>
     fn try_from(buf: &'buf [u8]) -> Result<Self, Self::Error> {
         let request = str::from_utf8(buf)?;
-        let mut request_lines = request.lines();
-        let first_line = request_lines.next().ok_or(ParseError::InvalidRequest)?;
+        let first_line_end = request.find("\r\n").ok_or(ParseError::InvalidRequest)?;
+        let first_line = &request[..first_line_end];
 
         let (method, first_line) = get_next_word(first_line).ok_or(ParseError::InvalidRequest)?;
         let (mut path, first_line) = get_next_word(first_line).ok_or(ParseError::InvalidRequest)?;
@@ -57,9 +58,15 @@ impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
             path = &path[..i];
         }
 
-        let mut headers: Option<Headers> = None;
+        let mut headers = None;
         if let Some(i) = request.find("\r\n") {
             headers = Some(Headers::from(&request[i + 2..]));
+        }
+
+        let mut body = None;
+        if let Some(i) = request.find("\r\n\r\n") {
+            let end_index = request.find('\u{0}').unwrap_or(request.len() - 1);
+            body = Some(&request[i + 4..end_index]);
         }
 
         Ok(Self {
@@ -67,6 +74,7 @@ impl<'buf> TryFrom<&'buf [u8]> for Request<'buf> {
             query_string,
             method,
             headers,
+            body,
         })
     }
 }
